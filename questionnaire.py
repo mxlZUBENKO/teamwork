@@ -1,26 +1,10 @@
 from telegram import ParseMode, ReplyKeyboardMarkup
 from telegram.ext import ConversationHandler
-from untils import gender_selection_button, main_keyboard
-
-
-def list_of_activity_levels():
-    return [
-            ["минимальный (сидячая работа, отсутствие физических нагрузок)"],
-            ["низкий (тренировки не менее 20 мин 1-3 раза в неделю)"],
-            ["умеренный (тренировки 30-60 мин 3-4 раза в неделю)"],
-            ["высокий (тренировки 30-60 мин 5-7 раза в неделю;тяжелая физическая работа"],
-            ["экстремальный (несколько интенсивных тренировок в день 6-7 раз в неделю; очень трудоемкая работа)"]
-        ]
-
-
-def data_output(context):
-    text = f"""<b>Пол</b>: {context.user_data['questionnaire']['gender']}
-<b>Возраст</b>: {context.user_data['questionnaire']['age']}
-<b>Рост</b>: {context.user_data['questionnaire']['height']}
-<b>Вест</b>: {context.user_data['questionnaire']['weight']}
-<b>Уровень физической активности</b>: {context.user_data['questionnaire']['level_of_physical_activity']}
-"""
-    return text
+from untils import (data_output, gender_selection_button, main_keyboard,
+                    get_emoji, activity_level_selection_button,
+                    list_of_activity_levels_and_multiplier)
+# from handlers import calorie_count
+from db import db, get_or_create_user, save_questionnaire
 
 
 def questionnaire_start(update, context):
@@ -33,7 +17,7 @@ def questionnaire_start(update, context):
 
 def questionnaire_gender(update, context):
     user_gender = update.message.text
-    if user_gender != "Мужской" and user_gender != "Женский":
+    if "Мужской" not in user_gender and "Женский" not in user_gender:
         update.message.reply_text("Выберете пол")
         return "gender"
     else:
@@ -59,49 +43,54 @@ def questionnaire_height(update, context):
         update.message.reply_text("Укажите корректный рост")
         return "height"
     else:
-        update.message.reply_text("Введите вес")
+        update.message.reply_text("Введите текущий вес")
         context.user_data["questionnaire"]["height"] = user_height
-    return "weight"
+    return "current_weight"
 
 
-def questionnaire_weight(update, context):
+def questionnaire_current_weight(update, context):
     user_weight = update.message.text
     if user_weight.isdigit() is False or user_weight == '0':
         update.message.reply_text("Укажите корректный вес")
-        return "height"
+        return "current_weight"
     else:
-        context.user_data["questionnaire"]["weight"] = user_weight
-        reply_keyboard = list_of_activity_levels()
         update.message.reply_text(
             "Выберете уровень физической активности",
-            reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+            reply_markup=activity_level_selection_button()
             )
+        context.user_data["questionnaire"]["current_weight"] = user_weight
     return "level_of_physical_activity"
 
 
 def level_of_physical_activity(update, context):
-    user_level_of_physical_activity = update.message.text
-    level_of_physical_activity = [level[0] for level in list_of_activity_levels()]
-    if user_level_of_physical_activity not in level_of_physical_activity:
+    user_response = update.message.text
+    level_of_physical_activity = [level[0] for level in list_of_activity_levels_and_multiplier()]
+    if user_response not in level_of_physical_activity:
         update.message.reply_text("Выберете уровень физической активности")
         return "level_of_physical_activity"
     else:
-        context.user_data["questionnaire"]["level_of_physical_activity"] = user_level_of_physical_activity
+        context.user_data["questionnaire"]["level_of_physical_activity"] = user_response
         user_text = data_output(context)
-        reply_keyboard = [["Данные верны", "Данные неверны. Заполнить снова"]]
+        reply_keyboard = [
+            [f"Данные верны {get_emoji('check_mark')}", f"Данные неверны. {get_emoji('cross_mark')}"]
+            ]
         update.message.reply_text(user_text, parse_mode=ParseMode.HTML,
-                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True,
+                                                                   resize_keyboard=True)
                                   )
         return "data_validation"
 
 
 def data_validation(update, context):
+    user = get_or_create_user(db, update.effective_user, update.message.chat.id)
     user_response = update.message.text
-    if user_response == "Данные верны":
-        update.message.reply_text("Поздравляем!", reply_markup=main_keyboard())
+    if "Данные верны" in user_response:
+        save_questionnaire(db, user['user_id'], context.user_data['questionnaire'])
+        update.message.reply_text("Ваши данные сохранены.", reply_markup=main_keyboard())
         return ConversationHandler.END
     else:
-        print("(((")
+        update.message.reply_text("Ваши данные не сохранены.", reply_markup=main_keyboard())
+        return ConversationHandler.END
 
 
 def questionnaire_dontknow(update, context):
