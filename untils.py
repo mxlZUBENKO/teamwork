@@ -2,48 +2,47 @@ from telegram import ReplyKeyboardMarkup
 from emoji import emojize
 
 
-def list_of_activity_levels_and_multiplier():
+def list_of_activity_levels():
     return [
-            [f"Минимальный {get_emoji('yawning_face')}", 1.2],
-            [f"Низкий {get_emoji('flushed_face')}", 1.375],
-            [f"Умеренный {get_emoji('smiling_face_with_sunglasses')}", 1.55],
-            [f"Высокий {get_emoji('face_with_steam_from_nose')}", 1.7],
-            [f"Экстремальный {get_emoji('smiling_face_with_horns')}", 1.9]
+            [f"Минимальный {get_emoji('yawning_face')}"],
+            [f"Низкий {get_emoji('flushed_face')}"],
+            [f"Умеренный {get_emoji('smiling_face_with_sunglasses')}"],
+            [f"Высокий {get_emoji('face_with_steam_from_nose')}"],
+            [f"Экстремальный {get_emoji('smiling_face_with_horns')}"]
         ]
 
 
-def calorie_сalculation(gender: str, age: int, height: int, weight: float, activity_level_multiplier: float) -> float:
+def activity_level_multiplier(level):
+    if level == f"Минимальный {get_emoji('yawning_face')}":
+        return 1.2
+    elif level == f"Низкий {get_emoji('flushed_face')}":
+        return 1.375
+    elif level == f"Умеренный {get_emoji('smiling_face_with_sunglasses')}":
+        return 1.55
+    elif level == f"Высокий {get_emoji('face_with_steam_from_nose')}":
+        return 1.7
+    return 1.9
+
+
+def calorie_сalculation(gender: str, age: int, height: int, weight: int, activity_level_multiplier: float) -> int:
     if "Женский" in gender:
         calorie_count = 655.1 + (9.563*weight) + (1.85*height) - (4.676*age)
         return calorie_count
     calorie_count = 66.5 + (13.75*weight) + (5.003*height) - (6.775*age)
-    return calorie_count
-
-
-def questionnaire_completion(context):
-    user_information = context.user_data.get('questionnaire', None)
-    if user_information is None:
-        return None
-    user_gender = context.user_data['questionnaire'].get('gender')
-    user_age = context.user_data['questionnaire'].get('age')
-    user_height = context.user_data['questionnaire'].get('height')
-    user_weight = context.user_data['questionnaire'].get('weight')
-    user_level_of_physical_activity = context.user_data['questionnaire'].get('level_of_physical_activity')
-    return [user_gender, user_age, user_height, user_weight,
-            activity_level_multiplier(user_level_of_physical_activity)]
+    return int(calorie_count)
 
 
 def initial_keyboard():
-    return ReplyKeyboardMarkup([[f"Заполнить данные {get_emoji('pencil')}"], ["Расчёт калорий"],
-                                ["Пищевая ценность", "Дейли рацион"],
-                                ["Рецепт", f"Настройки {get_emoji('gear')}"]
+    return ReplyKeyboardMarkup([[f"Заполнить данные {get_emoji('pencil')}"], [f"Расчёт калорий {get_emoji('abacus')}"],
+                                [f"Пищевая ценность {get_emoji('fire')}", f"Дейли рацион {get_emoji('receipt')}"],
+                                [f"Рецепт блюда {get_emoji('man_cook')}", f"Профиль {get_emoji('bust_in_silhouette')}"]
                                 ])
 
 
 def main_keyboard():
-    return ReplyKeyboardMarkup([["Расчёт калорий"],
-                                ["Пищевая ценность", "Дейли рацион"],
-                                ["Рецепт блюда", f"Профиль {get_emoji('bust_in_silhouette')}"]
+    return ReplyKeyboardMarkup([[f"Расчёт калорий {get_emoji('abacus')}"],
+                                [f"Пищевая ценность {get_emoji('fire')}", f"Дейли рацион {get_emoji('receipt')}"],
+                                [f"Рецепт блюда {get_emoji('man_cook')}", f"Профиль {get_emoji('bust_in_silhouette')}"]
                                 ])
 
 
@@ -54,7 +53,7 @@ def gender_selection_button():
 
 
 def activity_level_selection_button():
-    buttons = [[level[0]] for level in list_of_activity_levels_and_multiplier()]
+    buttons = list_of_activity_levels()
     return ReplyKeyboardMarkup(buttons, one_time_keyboard=True)
 
 
@@ -70,3 +69,30 @@ def data_output(context):
 <b>Уровень физической активности</b>: {context.user_data['questionnaire']['level_of_physical_activity']}
 """
     return text
+
+
+def emoji_to_the_number_of(emoji):
+    if f"{get_emoji('keycap_2')}{get_emoji('keycap_0')}" in emoji:
+        return "20"
+    elif f"{get_emoji('keycap_1')}{get_emoji('keycap_5')}" in emoji:
+        return "15"
+    elif f"{get_emoji('keycap_1')}{get_emoji('keycap_0')}" in emoji:
+        return "10"
+    elif f"{get_emoji('keycap_5')}" in emoji:
+        return "5"
+    return "unknown emoji or missing emoji"
+
+
+def keypad_with_weight_selection():
+    return ReplyKeyboardMarkup([
+        [f"{get_emoji('keycap_5')} кг", f"{get_emoji('keycap_1')}{get_emoji('keycap_0')} кг"],
+        [f"{get_emoji('keycap_1')}{get_emoji('keycap_5')} кг", f"{get_emoji('keycap_2')}{get_emoji('keycap_0')} кг"]
+        ], one_time_keyboard=True, resize_keyboard=True)
+
+
+def keypad_with_target_selection():
+    return ReplyKeyboardMarkup([
+            [f"Сбросить вес {get_emoji('down_arrow')}"],
+            [f"Набрать вес {get_emoji('up_arrow')}"],
+            [f"Сохранить вес {get_emoji('left-right arrow')}"]
+        ], one_time_keyboard=True, resize_keyboard=True)

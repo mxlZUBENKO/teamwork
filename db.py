@@ -34,3 +34,11 @@ def save_questionnaire(db, user_id, questionnaire_data):
             {'_id': user['_id']},
             {'$push': {'questionnaire': questionnaire_data}}
         )
+
+
+def add_or_replace_something(db, user_id, name, value):
+    user = db.users.find_one({"user_id": user_id})
+    db.users.update_one(
+        {'_id': user['_id']},
+        {'$set': {name: value}}
+        )
